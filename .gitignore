@@ -1,5 +1,51 @@
-venv/
+# Python
 __pycache__/
 *.pyc
+venv/
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node.js / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Frontend specific (inside frontend/ folder)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Environment variables – never commit!
 .env
-.DS_Storevenv/
+*.env
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
