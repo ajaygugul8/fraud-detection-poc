@@ -1,13 +1,12 @@
 import axios from 'axios';
 
-// Development: http://localhost:8000
-// Production: Render URL (or fallback)
+// Use relative path in production, localhost in development
 const getBaseURL = () => {
   if (import.meta.env.MODE === 'development') {
     return 'http://localhost:8000';
   }
-  // Production: use environment variable or fallback
-  return import.meta.env.VITE_API_URL || 'https://fraud-detection-poc1.onrender.com';
+  // Production: empty string → same origin
+  return '';
 };
 
 const API_BASE = getBaseURL();

@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 from app.database import db
 from app.queries import *
@@ -139,3 +141,14 @@ async def get_high_value_transactions():
 @app.get("/merchant-risk")
 async def get_merchant_risk():
     return await db.run_query(MERCHANT_RISK)
+
+# Mount static files (CSS, JS, images)
+app.mount("/assets", StaticFiles(directory="app/static/assets"), name="assets")
+
+# Serve index.html for any other path (React SPA)
+@app.get("/{full_path:path}")
+async def serve_react_app(full_path: str):
+    # If the path is an API route or docs, FastAPI would have already matched it.
+    # This catch‑all only runs if no API route matched.
+    # We serve index.html so React's router can handle the frontend routes.
+    return FileResponse("app/static/index.html")
