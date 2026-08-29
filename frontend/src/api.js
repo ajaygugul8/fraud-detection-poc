@@ -1,6 +1,16 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://fraud-detection-poc1.onrender.com';
+// Development: http://localhost:8000
+// Production: Render URL (or fallback)
+const getBaseURL = () => {
+  if (import.meta.env.MODE === 'development') {
+    return 'http://localhost:8000';
+  }
+  // Production: use environment variable or fallback
+  return import.meta.env.VITE_API_URL || 'https://fraud-detection-poc1.onrender.com';
+};
+
+const API_BASE = getBaseURL();
 
 export const getTopFraudMerchants = () => axios.get(`${API_BASE}/top-fraud-merchants`);
 export const getTopFraudCardholders = () => axios.get(`${API_BASE}/top-fraud-cardholders`);
