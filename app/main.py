@@ -21,8 +21,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def root():
+@app.get("/api")
+async def api_info():
     return {
         "message": "Fraud Detection API",
         "endpoints": [
@@ -148,7 +148,7 @@ app.mount("/assets", StaticFiles(directory="app/static/assets"), name="assets")
 # Serve index.html for any other path (React SPA)
 @app.get("/{full_path:path}")
 async def serve_react_app(full_path: str):
-    # If the path is an API route or docs, FastAPI would have already matched it.
-    # This catch‑all only runs if no API route matched.
-    # We serve index.html so React's router can handle the frontend routes.
+    # Skip API and docs paths
+    if full_path.startswith("docs") or full_path.startswith("openapi.json"):
+        raise HTTPException(status_code=404)
     return FileResponse("app/static/index.html")
