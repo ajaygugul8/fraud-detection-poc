@@ -81,12 +81,7 @@ async def get_stats():
 
 @app.get("/graph/transaction/{txn_id}")
 async def get_transaction_graph(txn_id: int):
-    txn_query = "MATCH (t:Transaction {transaction_id: $txn_id}) RETURN t"
-    txn_result = await db.run_query(txn_query, {"txn_id": txn_id})
-    if not txn_result:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-
-    related_query = """
+    query = """
     MATCH (t:Transaction {transaction_id: $txn_id})
     OPTIONAL MATCH (c:Card)-[:MADE]->(t)
     OPTIONAL MATCH (ch:Cardholder)-[:OWNS]->(c)
@@ -94,47 +89,50 @@ async def get_transaction_graph(txn_id: int):
     OPTIONAL MATCH (t)-[:HAS_FRAUD]->(f:FraudCase)
     RETURN t, c, ch, m, f
     """
-    result = await db.run_query(related_query, {"txn_id": txn_id})
+    result = await db.run_query(query, {"txn_id": txn_id})
+    
     if not result:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
+    # Extract nodes and relationships
+    row = result[0]
     nodes = []
     links = []
-    seen = set()
+    node_ids = set()
 
-    def add_node(node, label):
-        if node is None:
+    def add_node(node_data, label, id_key, display_name=None):
+        if node_data is None:
             return None
-        props = _node_properties(node)
-        node_id = _node_id(node, label)
+        node_id = node_data.get(id_key)
         if node_id is None:
             return None
-        key = f"{label}:{node_id}"
-        if key in seen:
+        if node_id in node_ids:
             return node_id
-        seen.add(key)
+        node_ids.add(node_id)
         nodes.append({
-            "id": node_id,
+            "id": str(node_id),
             "label": label,
-            "properties": props
+            "display_name": display_name or f"{label}_{node_id}",
+            "properties": {k: v for k, v in node_data.items() if k != id_key}
         })
         return node_id
 
-    row = result[0]
-    txn_node_id = add_node(row.get("t"), "Transaction")
-    card_node_id = add_node(row.get("c"), "Card")
-    cardholder_node_id = add_node(row.get("ch"), "Cardholder")
-    merchant_node_id = add_node(row.get("m"), "Merchant")
-    fraud_node_id = add_node(row.get("f"), "FraudCase")
+    # Add nodes
+    txn_id_str = add_node(row.get("t"), "Transaction", "transaction_id", f"Txn {txn_id}")
+    card_id = add_node(row.get("c"), "Card", "card_id", f"Card {row.get('c', {}).get('card_id', '')}")
+    ch_id = add_node(row.get("ch"), "Cardholder", "cardholder_id", f"Holder {row.get('ch', {}).get('cardholder_id', '')}")
+    merch_id = add_node(row.get("m"), "Merchant", "merchant_id", row.get('m', {}).get('merchant_name', 'Merchant'))
+    fraud_id = add_node(row.get("f"), "FraudCase", "fraud_case_id", f"Fraud {row.get('f', {}).get('fraud_case_id', '')}")
 
-    if txn_node_id is not None and card_node_id is not None:
-        links.append({"source": card_node_id, "target": txn_node_id, "type": "MADE"})
-    if card_node_id is not None and cardholder_node_id is not None:
-        links.append({"source": cardholder_node_id, "target": card_node_id, "type": "OWNS"})
-    if txn_node_id is not None and merchant_node_id is not None:
-        links.append({"source": txn_node_id, "target": merchant_node_id, "type": "AT_MERCHANT"})
-    if txn_node_id is not None and fraud_node_id is not None:
-        links.append({"source": txn_node_id, "target": fraud_node_id, "type": "HAS_FRAUD"})
+    # Add relationships
+    if card_id and txn_id_str:
+        links.append({"source": card_id, "target": txn_id_str, "type": "MADE"})
+    if ch_id and card_id:
+        links.append({"source": ch_id, "target": card_id, "type": "OWNS"})
+    if txn_id_str and merch_id:
+        links.append({"source": txn_id_str, "target": merch_id, "type": "AT_MERCHANT"})
+    if txn_id_str and fraud_id:
+        links.append({"source": txn_id_str, "target": fraud_id, "type": "HAS_FRAUD"})
 
     return {"nodes": nodes, "links": links}
 
